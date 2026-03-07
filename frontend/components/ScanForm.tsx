@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import React, { useState, FormEvent } from "react";
 import type { ScanResultType } from "./ScanResults";
 
 const API_BASE = "http://localhost:8000";
@@ -9,10 +9,12 @@ export default function ScanForm({
   onResult,
   onLoading,
   onError,
+  setLogs,
 }: {
   onResult: (result: ScanResultType) => void;
   onLoading: (loading: boolean) => void;
   onError: (message: string | null) => void;
+  setLogs?: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
   const [endpoint, setEndpoint] = useState("");
   const [description, setDescription] = useState("");
@@ -20,6 +22,8 @@ export default function ScanForm({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     onError(null);
+    setLogs?.(["Starting ShadowLab scan..."]);
+    setLogs?.((prev) => [...prev, "Launching adversarial attacks..."]);
     onLoading(true);
 
     try {
@@ -38,6 +42,11 @@ export default function ScanForm({
 
       const data: ScanResultType = await res.json();
       onResult(data);
+      setLogs?.((prev) => [
+        ...prev,
+        "Scan completed.",
+        "Safety score calculated.",
+      ]);
     } catch {
       onError("Scan failed. Check API endpoint.");
     } finally {

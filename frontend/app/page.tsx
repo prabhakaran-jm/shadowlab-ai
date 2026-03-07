@@ -1,14 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import ScanForm from "@/components/ScanForm";
 import ScanResults from "@/components/ScanResults";
+import AttackConsole from "@/components/AttackConsole";
 import type { ScanResultType } from "@/components/ScanResults";
+
+const SIMULATED_ATTACKS = [
+  "Running attack: prompt_injection",
+  "Running attack: system_prompt_extraction",
+  "Running attack: policy_bypass",
+];
 
 export default function Home() {
   const [result, setResult] = useState<ScanResultType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
+  const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (!loading) return;
+    const delays = [800, 1800, 2800];
+    timeoutRefs.current = delays.map((delay, i) =>
+      setTimeout(() => {
+        setLogs((prev) => [...prev, SIMULATED_ATTACKS[i]]);
+      }, delay)
+    );
+    return () => {
+      timeoutRefs.current.forEach(clearTimeout);
+      timeoutRefs.current = [];
+    };
+  }, [loading]);
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
@@ -26,12 +49,16 @@ export default function Home() {
           onResult={setResult}
           onLoading={setLoading}
           onError={setError}
+          setLogs={setLogs}
         />
 
         {loading && (
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 text-center text-gray-600">
-            Running adversarial tests...
-          </div>
+          <>
+            <AttackConsole logs={logs} />
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-6 text-center text-gray-600">
+              Running adversarial tests...
+            </div>
+          </>
         )}
 
         {error && (
@@ -40,9 +67,7 @@ export default function Home() {
           </div>
         )}
 
-        {result && !loading && (
-          <ScanResults result={result} />
-        )}
+        {result && !loading && <ScanResults result={result} />}
       </div>
     </div>
   );
