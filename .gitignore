@@ -140,3 +140,8 @@ vite.config.ts.timestamp-*
 
 # Devpost files
 devpost.md 
+
+# Environment variables
+.env
+.env.*
+!.env.example

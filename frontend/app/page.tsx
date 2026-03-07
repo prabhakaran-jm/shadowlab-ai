@@ -43,6 +43,9 @@ export default function Home() {
           <p className="mt-2 text-gray-600">
             Chaos engineering for AI APIs
           </p>
+          <p className="mt-1 text-sm font-medium text-indigo-600">
+            Powered by DigitalOcean Gradient™ AI
+          </p>
         </header>
 
         <ScanForm

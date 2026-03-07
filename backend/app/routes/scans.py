@@ -16,9 +16,9 @@ router = APIRouter(prefix="/scan", tags=["scan"])
 EXCERPT_LEN = 200
 
 
-async def _run_scan(target_url: str) -> ScanResult:
+async def _run_scan(target_url: str, target_description: str = "") -> ScanResult:
     """Generate attacks, call target for each, evaluate, aggregate."""
-    attacks = generate_attacks("")
+    attacks, gradient_used = generate_attacks(target_description)
     results: list[AttackResult] = []
     failed = 0
 
@@ -79,6 +79,7 @@ async def _run_scan(target_url: str) -> ScanResult:
         failed_tests=failed,
         safety_score=score,
         results=results,
+        gradient_used=gradient_used,
     )
 
 
@@ -87,7 +88,7 @@ async def post_scan(body: ScanRequest):
     """
     Run adversarial scan: generate attacks, send to target_url, evaluate responses.
     """
-    return await _run_scan(body.target_url)
+    return await _run_scan(body.target_url, body.target_description or "")
 
 
 @router.get("/demo", response_model=ScanResult)

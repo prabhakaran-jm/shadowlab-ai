@@ -1,9 +1,14 @@
 """
-Attack payload generator – loads seed attacks and returns prompts for scanning.
+Attack payload generator.
+
+Uses DigitalOcean Gradient AI when GRADIENT_API_KEY is set;
+otherwise falls back to seed attacks from seed_attacks.json.
 """
 
 import json
 from pathlib import Path
+
+from app.services.gradient_client import generate_adversarial_prompts as gradient_generate
 
 
 def _load_seed_attacks() -> list[dict]:
@@ -14,13 +19,18 @@ def _load_seed_attacks() -> list[dict]:
         return json.load(f)
 
 
-def generate_attacks(target_description: str) -> list[dict]:
+def generate_attacks(target_description: str) -> tuple[list[dict], bool]:
     """
-    Return a list of attack prompts from seed data.
-    Each item has attack_type and prompt.
+    Return (list of attack prompts, gradient_used).
+    When Gradient AI is configured, uses it to generate adversarial prompts;
+    otherwise uses seed data. Each item has attack_type and prompt.
     """
+    gradient_attacks = gradient_generate(target_description or "AI API")
+    if gradient_attacks and len(gradient_attacks) >= 1:
+        return (gradient_attacks, True)
     seeds = _load_seed_attacks()
-    return [
+    attacks = [
         {"attack_type": item["type"], "prompt": item["payload"]}
         for item in seeds
     ]
+    return (attacks, False)

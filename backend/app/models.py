@@ -47,3 +47,4 @@ class ScanResult(BaseModel):
     failed_tests: int
     safety_score: int
     results: list[AttackResult]
+    gradient_used: bool = False
