@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, FormEvent } from "react";
+import { Zap } from "lucide-react";
 import type { ScanResultType } from "./ScanResults";
 
 const API_BASE = "http://localhost:8000";
@@ -55,11 +56,22 @@ export default function ScanForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-gray-200 bg-white shadow-sm p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">New scan</h2>
-      <div className="space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-4 sm:p-5 transition-all duration-300 shadow-lg shadow-black/20 hover-lift h-full min-h-[180px] flex flex-col"
+    >
+      <div className="flex items-center gap-2.5 mb-3">
+        <Zap className="w-5 h-5 text-amber-400/90" />
+        <h2 className="text-base font-semibold text-zinc-100 tracking-tight">
+          New scan
+        </h2>
+      </div>
+      <div className="space-y-3">
         <div>
-          <label htmlFor="endpoint" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="endpoint"
+            className="block text-sm font-medium text-zinc-400 mb-1"
+          >
             API Endpoint
           </label>
           <input
@@ -68,12 +80,18 @@ export default function ScanForm({
             value={endpoint}
             onChange={(e) => setEndpoint(e.target.value)}
             placeholder="https://your-ai-api.example.com/chat"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-black/40 text-zinc-100 placeholder-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/25 outline-none transition-all hover:border-white/15 text-sm"
             required
           />
+          <p className="mt-0.5 text-xs text-zinc-600">
+            e.g. https://api.example.com/v1/chat or http://localhost:8000/mock-vulnerable-api
+          </p>
         </div>
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-zinc-400 mb-1"
+          >
             Target Description
           </label>
           <textarea
@@ -81,13 +99,16 @@ export default function ScanForm({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Brief description of the target API (e.g. chat assistant)"
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            rows={2}
+            className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-black/40 text-zinc-100 placeholder-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/25 outline-none transition-all resize-none hover:border-white/15 text-sm"
           />
+          <p className="mt-0.5 text-xs text-zinc-600">
+            Optional — used to tailor adversarial prompts when using Gradient AI.
+          </p>
         </div>
         <button
           type="submit"
-          className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="mt-0 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2 focus:ring-offset-[#0f0f12] shadow-lg shadow-amber-500/10 hover:shadow-amber-400/20 hover:-translate-y-px active:translate-y-0"
         >
           Start Scan
         </button>
