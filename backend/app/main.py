@@ -8,9 +8,16 @@ In the final system, this app will:
 - Integrate with DigitalOcean Gradient AI for model inference
 """
 
+import logging
+
 from fastapi import FastAPI
 
 from app.routes import reports, scans, targets
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s %(name)s: %(message)s",
+)
 
 app = FastAPI(
     title="ShadowLab API",
