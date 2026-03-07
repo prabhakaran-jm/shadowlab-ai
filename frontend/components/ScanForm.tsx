@@ -21,6 +21,9 @@ export default function ScanForm({
 }) {
   const [endpoint, setEndpoint] = useState("");
   const [description, setDescription] = useState("");
+  const [bodyFormat, setBodyFormat] = useState<"message" | "messages">("message");
+  const [targetModel, setTargetModel] = useState("");
+  const [targetApiKey, setTargetApiKey] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,14 +32,19 @@ export default function ScanForm({
     setLogs?.((prev) => [...prev, "Launching adversarial attacks..."]);
     onLoading(true);
 
+    const payload: Record<string, string | undefined> = {
+      target_url: endpoint,
+      target_description: description,
+      target_body_format: bodyFormat,
+    };
+    if (targetModel.trim()) payload.target_model = targetModel.trim();
+    if (targetApiKey.trim()) payload.target_authorization = "Bearer " + targetApiKey.trim();
+
     try {
       const res = await fetch(`${API_BASE}/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          target_url: endpoint,
-          target_description: description,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -106,6 +114,61 @@ export default function ScanForm({
           />
           <p className="mt-0.5 text-xs text-zinc-600">
             Optional — used to tailor adversarial prompts when using Gradient AI.
+          </p>
+        </div>
+        <div>
+          <label
+            htmlFor="bodyFormat"
+            className="block text-sm font-medium text-zinc-400 mb-1"
+          >
+            Request body format
+          </label>
+          <select
+            id="bodyFormat"
+            value={bodyFormat}
+            onChange={(e) => setBodyFormat(e.target.value as "message" | "messages")}
+            className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-black/40 text-zinc-100 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/25 outline-none text-sm"
+          >
+            <option value="message">message (default)</option>
+            <option value="messages">messages (OpenAI / Gradient)</option>
+          </select>
+        </div>
+        <div>
+          <label
+            htmlFor="targetModel"
+            className="block text-sm font-medium text-zinc-400 mb-1"
+          >
+            Model (optional)
+          </label>
+          <input
+            id="targetModel"
+            type="text"
+            value={targetModel}
+            onChange={(e) => setTargetModel(e.target.value)}
+            placeholder="e.g. llama3.3-70b-instruct"
+            className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-black/40 text-zinc-100 placeholder-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/25 outline-none text-sm"
+          />
+          <p className="mt-0.5 text-xs text-zinc-600">
+            For OpenAI/Gradient endpoints when using messages format.
+          </p>
+        </div>
+        <div>
+          <label
+            htmlFor="targetApiKey"
+            className="block text-sm font-medium text-zinc-400 mb-1"
+          >
+            Target API key (optional)
+          </label>
+          <input
+            id="targetApiKey"
+            type="password"
+            value={targetApiKey}
+            onChange={(e) => setTargetApiKey(e.target.value)}
+            placeholder="Bearer token for authenticated APIs"
+            className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-black/40 text-zinc-100 placeholder-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/25 outline-none text-sm"
+          />
+          <p className="mt-0.5 text-xs text-zinc-600">
+            For real API demos (e.g. Gradient). Not stored; sent only with the scan request.
           </p>
         </div>
         <button

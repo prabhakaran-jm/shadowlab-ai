@@ -76,6 +76,11 @@ export default function Home() {
                   score={result.safety_score}
                   gradientUsed={result.gradient_used}
                 />
+                {!result.gradient_used && (
+                  <p className="text-xs text-amber-500/90 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                    This run used seed attacks. Set <code className="text-amber-400/90">GRADIENT_MODEL_ACCESS_KEY</code> on the backend for Gradient AI–generated attacks and analysis.
+                  </p>
+                )}
                 <VulnerabilitySummarySection result={result} />
                 <RemediationsBlock fixes={getUniqueFixes(result.results)} />
               </>

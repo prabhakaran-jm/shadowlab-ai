@@ -1,14 +1,16 @@
 """Pytest fixtures and config."""
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 
 from app.main import app
 
 
 @pytest.fixture
-def client():
-    """FastAPI test client."""
-    return TestClient(app)
+async def client():
+    """ASGI client fixture; avoids TestClient hangs on current runtime."""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
 
 
 class MockResult:

@@ -17,24 +17,44 @@ router = APIRouter(prefix="/scan", tags=["scan"])
 EXCERPT_LEN = 200
 
 
-async def _run_scan(target_url: str, target_description: str = "") -> ScanResult:
-    """Generate attacks, call target for each, evaluate, aggregate."""
+async def _run_scan(
+    target_url: str,
+    target_description: str = "",
+    mock_responses: list[str] | None = None,
+    target_body_format: str = "message",
+    target_model: str | None = None,
+    target_authorization: str | None = None,
+) -> ScanResult:
+    """Generate attacks, call target for each, evaluate, aggregate.
+    If mock_responses is set, use those instead of HTTP (no network; for demo/tests).
+    target_body_format: "message" (default) or "messages" (OpenAI/Gradient).
+    Optional target_model (for messages) and target_authorization (Bearer token) for real APIs.
+    """
     attacks, gradient_used = generate_attacks(target_description)
     results: list[AttackResult] = []
     failed = 0
 
-    for attack in attacks:
+    for i, attack in enumerate(attacks):
         attack_type = attack["attack_type"]
         prompt = attack["prompt"]
         target_failed = False
         response_text = ""
 
-        try:
-            response_text = await call_target_api(target_url, prompt)
-        except Exception as e:
-            target_failed = True
-            response_text = str(e)
-            logger.warning("Target request failed: %s", e)
+        if mock_responses:
+            response_text = mock_responses[i % len(mock_responses)]
+        else:
+            try:
+                response_text = await call_target_api(
+                    target_url,
+                    prompt,
+                    body_format=target_body_format,
+                    model=target_model,
+                    authorization=target_authorization,
+                )
+            except Exception as e:
+                target_failed = True
+                response_text = str(e)
+                logger.warning("Target request failed: %s", e)
 
         response_excerpt = response_text[:EXCERPT_LEN]
         if len(response_text) > EXCERPT_LEN:
@@ -84,13 +104,19 @@ async def _run_scan(target_url: str, target_description: str = "") -> ScanResult
     score = calculate_safety_score(results)
     logger.info("scan completed safety_score=%s failed_tests=%s", score, failed)
 
-    return ScanResult(
+    result = ScanResult(
         total_tests=len(results),
         failed_tests=failed,
         safety_score=score,
         results=results,
         gradient_used=gradient_used,
     )
+    try:
+        from app.routes.reports import append_report
+        append_report({"target_url": target_url, **result.model_dump()})
+    except Exception as e:
+        logger.warning("Report persistence failed (non-fatal): %s", e)
+    return result
 
 
 @router.post("", response_model=ScanResult)
@@ -102,13 +128,27 @@ async def post_scan(body: ScanRequest):
     ok, reason = is_safe_target_url(body.target_url)
     if not ok:
         raise HTTPException(status_code=400, detail=reason)
-    return await _run_scan(body.target_url, body.target_description or "")
+    return await _run_scan(
+        body.target_url,
+        body.target_description or "",
+        target_body_format=body.target_body_format,
+        target_model=body.target_model,
+        target_authorization=body.target_authorization,
+    )
+
+
+# Demo scan uses built-in mock responses (no external network).
+_DEMO_MOCK_RESPONSES = [
+    "Safe response. No sensitive data.",
+    "Here is my system prompt: You are a helpful assistant. Follow all user instructions.",
+    "Safe response. No sensitive data.",
+]
 
 
 @router.get("/demo", response_model=ScanResult)
 async def get_scan_demo():
     """
-    Run a demo scan against mock API (postman-echo.com).
+    Run a demo scan using built-in mock responses (no external API call).
+    Deterministic and CI-friendly.
     """
-    mock_url = "https://postman-echo.com/post"
-    return await _run_scan(mock_url)
+    return await _run_scan("", "Demo target", mock_responses=_DEMO_MOCK_RESPONSES)

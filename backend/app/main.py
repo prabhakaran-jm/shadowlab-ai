@@ -50,13 +50,13 @@ app.include_router(reports.router)
 
 
 @app.get("/health")
-def health():
+async def health():
     """Health check for load balancers and monitoring."""
     return {"status": "ok"}
 
 
 @app.post("/mock-vulnerable-api")
-def mock_vulnerable_api():
+async def mock_vulnerable_api():
     """
     Mock AI API that returns a 'vulnerable' response (contains 'system prompt').
     Use this as the scan target URL to test the Gradient analysis model:

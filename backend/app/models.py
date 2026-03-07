@@ -2,6 +2,8 @@
 ShadowLab Pydantic models for API request/response schemas.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -26,6 +28,9 @@ class ScanRequest(BaseModel):
 
     target_url: str
     target_description: str
+    target_body_format: Literal["message", "messages"] = "message"
+    target_authorization: str | None = None  # e.g. "Bearer <key>" for authenticated APIs (demo only)
+    target_model: str | None = None  # for "messages" format; e.g. "llama3.3-70b-instruct" (Gradient)
 
 
 class AttackResult(BaseModel):

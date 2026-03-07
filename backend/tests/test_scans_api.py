@@ -2,23 +2,31 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
+import httpx
 
 from app.main import app
 
-client = TestClient(app)
+
+@pytest.fixture
+async def client():
+    """ASGI client for route tests (avoids TestClient hang on this runtime)."""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
 
 
-def test_health():
+@pytest.mark.asyncio
+async def test_health(client):
     """Health check returns ok."""
-    r = client.get("/health")
+    r = await client.get("/health")
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
 
 
-def test_post_scan_rejects_localhost_without_allow_env():
+@pytest.mark.asyncio
+async def test_post_scan_rejects_localhost_without_allow_env(client):
     """POST /scan rejects localhost target URL (SSRF guard)."""
-    r = client.post(
+    r = await client.post(
         "/scan",
         json={
             "target_url": "http://127.0.0.1:8000/mock",
@@ -29,9 +37,10 @@ def test_post_scan_rejects_localhost_without_allow_env():
     assert "loopback" in r.json()["detail"].lower() or "localhost" in r.json()["detail"].lower()
 
 
-def test_post_scan_rejects_private_ip():
+@pytest.mark.asyncio
+async def test_post_scan_rejects_private_ip(client):
     """POST /scan rejects private IP target URL."""
-    r = client.post(
+    r = await client.post(
         "/scan",
         json={
             "target_url": "http://192.168.1.1/api",
@@ -42,11 +51,13 @@ def test_post_scan_rejects_private_ip():
     assert "private" in r.json()["detail"].lower()
 
 
-def test_post_scan_accepts_public_url():
+@patch("app.routes.scans.is_safe_target_url", return_value=(True, ""))
+@pytest.mark.asyncio
+async def test_post_scan_accepts_public_url(_safe, client):
     """POST /scan accepts public URL and returns scan result (mocked target)."""
     with patch("app.routes.scans.call_target_api", new_callable=AsyncMock) as mock_call:
         mock_call.return_value = "Safe response with no sensitive phrases."
-        r = client.post(
+        r = await client.post(
             "/scan",
             json={
                 "target_url": "https://api.example.com/chat",
@@ -61,9 +72,10 @@ def test_post_scan_accepts_public_url():
         assert 0 <= data["safety_score"] <= 100
 
 
-def test_get_scan_demo_returns_200():
+@pytest.mark.asyncio
+async def test_get_scan_demo_returns_200(client):
     """GET /scan/demo runs a demo scan and returns result."""
-    r = client.get("/scan/demo")
+    r = await client.get("/scan/demo")
     assert r.status_code == 200
     data = r.json()
     assert "safety_score" in data

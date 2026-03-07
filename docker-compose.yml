@@ -20,8 +20,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    # Browser runs on host; use localhost so the client can reach the backend.
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules
