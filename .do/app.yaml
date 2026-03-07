@@ -1,0 +1,70 @@
+# ShadowLab – DigitalOcean App Platform spec
+# Deploy: doctl apps create --spec .do/app.yaml  (after connecting GitHub at cloud.digitalocean.com/apps/github/install)
+# If you get "Git branch not found", set branch below to your repo's default (e.g. master).
+
+name: shadowlab
+region: nyc
+
+features:
+  - buildpack-stack=ubuntu-22
+
+# Explicit ingress: one app URL; backend under /api, frontend at /
+ingress:
+  rules:
+    - component:
+        name: shadowlab-backend
+      match:
+        path:
+          prefix: /api
+    - component:
+        name: shadowlab-frontend
+      match:
+        path:
+          prefix: /
+
+services:
+  # Backend: FastAPI + Gradient AI
+  - name: shadowlab-backend
+    source_dir: backend
+    environment_slug: python
+    github:
+      repo: prabhakaran-jm/shadowlab-ai
+      branch: master
+      deploy_on_push: true
+    build_command: pip install -r requirements.txt
+    run_command: sh run.sh
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+    envs:
+      - key: CORS_ORIGINS
+        value: ""   # Set in dashboard to frontend URL, e.g. https://shadowlab-frontend-xxxx.ondigitalocean.app
+        scope: RUN_AND_BUILD_TIME
+      - key: GRADIENT_MODEL_ACCESS_KEY
+        type: SECRET
+        value: ""   # Set in dashboard (Model Access Key from Gradient AI → Serverless Inference)
+        scope: RUN_AND_BUILD_TIME
+      - key: GRADIENT_API_URL
+        value: https://inference.do-ai.run
+        scope: RUN_AND_BUILD_TIME
+
+  # Frontend: Next.js dashboard
+  - name: shadowlab-frontend
+    source_dir: frontend
+    environment_slug: node-js
+    github:
+      repo: prabhakaran-jm/shadowlab-ai
+      branch: master
+      deploy_on_push: true
+    build_command: npm ci && npm run build
+    run_command: npm start
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NEXT_PUBLIC_API_URL
+        value: ""   # Set in dashboard to backend URL, e.g. https://shadowlab-backend-xxxx.ondigitalocean.app
+        scope: BUILD_TIME

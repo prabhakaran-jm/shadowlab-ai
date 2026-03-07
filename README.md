@@ -104,6 +104,8 @@ npm run dev
 
 Dashboard: `http://localhost:3000`. For production, set `NEXT_PUBLIC_API_URL` to your backend URL.
 
+To run the production build locally: `npm run build` then `npm start` (still serves on port 3000 unless `PORT` is set).
+
 ### Tests
 
 **Backend (pytest):**
@@ -119,6 +121,19 @@ cd frontend
 npm install
 npm run test
 ```
+
+---
+
+## Deployment (DigitalOcean App Platform)
+
+To run ShadowLab on [DigitalOcean App Platform](https://docs.digitalocean.com/products/app-platform/):
+
+1. Push this repo to GitHub and connect it in the [Apps](https://cloud.digitalocean.com/apps) dashboard (or use the spec: `doctl apps create --spec .do/app.yaml` after setting your repo in `.do/app.yaml`).
+2. Add two services: **backend** (source dir `backend`, run `sh run.sh`, port 8080) and **frontend** (source dir `frontend`, `npm run build` / `npm start`, port 8080).
+3. Set **backend** env: `CORS_ORIGINS` = your frontend Live URL; optionally `GRADIENT_MODEL_ACCESS_KEY`.
+4. Set **frontend** env: `NEXT_PUBLIC_API_URL` = your backend Live URL, then redeploy the frontend.
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for the full step-by-step and troubleshooting.
 
 ---
 
