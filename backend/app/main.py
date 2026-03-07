@@ -18,8 +18,13 @@ from dotenv import load_dotenv
 _env = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_env)
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.routes import reports, scans, targets
 from app.services.storage import init_db
@@ -29,11 +34,25 @@ logging.basicConfig(
     format="%(levelname)s %(name)s: %(message)s",
 )
 
+limiter = Limiter(key_func=get_remote_address)
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Initialize persistent storage on startup."""
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="ShadowLab API",
     description="Chaos Engineering for AI APIs – adversarial testing and evaluation",
     version="0.1.0",
+    lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 _cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").strip()
 allow_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
@@ -48,12 +67,6 @@ app.add_middleware(
 app.include_router(targets.router)
 app.include_router(scans.router)
 app.include_router(reports.router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize persistent storage tables."""
-    init_db()
 
 
 @app.get("/health")

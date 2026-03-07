@@ -9,7 +9,7 @@ from pathlib import Path
 
 DB_ENV = "SHADOWLAB_DB_PATH"
 DEFAULT_DB_NAME = "shadowlab.db"
-MAX_REPORTS = 50
+MAX_REPORTS = int(os.getenv("SHADOWLAB_MAX_REPORTS", "50"))
 
 
 def _db_path() -> Path:

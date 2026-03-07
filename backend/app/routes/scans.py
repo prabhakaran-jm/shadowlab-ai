@@ -9,10 +9,13 @@ from app.services.judge import evaluate_response, suggest_fix
 from app.services.scoring import calculate_safety_score
 from app.services.ssrf_guard import is_safe_target_url
 from app.services.target_runner import call_target_api
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/scan", tags=["scan"])
+limiter = Limiter(key_func=get_remote_address)
 
 EXCERPT_LEN = 200
 
@@ -120,10 +123,12 @@ async def _run_scan(
 
 
 @router.post("", response_model=ScanResult)
-async def post_scan(body: ScanRequest):
+@limiter.limit("10/minute")
+async def post_scan(request: Request, body: ScanRequest):
     """
     Run adversarial scan: generate attacks, send to target_url, evaluate responses.
     Rejects private/localhost URLs unless ALLOW_LOCALHOST_TARGET=1 (e.g. for local mock demo).
+    Rate limited to 10 requests per minute per IP.
     """
     ok, reason = is_safe_target_url(body.target_url)
     if not ok:

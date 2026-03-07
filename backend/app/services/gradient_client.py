@@ -64,17 +64,27 @@ def _chat_completion(
                 },
                 json=payload,
             )
+            if resp.status_code == 429:
+                logger.warning(
+                    "Gradient API rate limited (429): %s. "
+                    "Consider reducing request frequency.",
+                    url,
+                )
+                return None
             if resp.status_code != 200:
                 logger.warning(
-                    "Gradient API error: %s %s body=%s",
+                    "Gradient API error: HTTP %s %s body=%s",
                     resp.status_code,
                     url,
-                    resp.text[:200],
+                    resp.text[:300],
                 )
                 return None
             data = resp.json()
+    except httpx.TimeoutException:
+        logger.warning("Gradient API request timed out: %s", url)
+        return None
     except Exception as e:
-        logger.warning("Gradient API request failed: %s", e)
+        logger.warning("Gradient API request failed (%s): %s", type(e).__name__, e)
         return None
 
     text = _extract_completion_text(data)

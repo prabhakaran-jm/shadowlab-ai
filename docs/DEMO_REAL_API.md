@@ -55,6 +55,29 @@ The target API must accept `POST` with JSON `{ "model": "...", "messages": [{"ro
 
 ---
 
+## Showing findings and a lower safety score (for the video)
+
+When you scan a well-hardened API (e.g. Gradient), you often get 100/100 and “0 detected”. To **show real findings and a lower score** in your demo:
+
+1. **Use the built-in mock-vulnerable endpoint** as the scan target. It always returns a response containing “system prompt”, so the judge will mark it as a failure and the safety score will drop (e.g. 80 or lower depending on how many attacks hit it).
+
+2. **In the dashboard (deployed app):**
+   - **API Endpoint:** `https://shadowlab-h9yu6.ondigitalocean.app/api/mock-vulnerable-api`  
+     (replace with your own app URL if different; the backend is under `/api` when using the default ingress.)
+   - **Target Description:** e.g. *“Mock vulnerable API for demo”*
+   - **Request body format:** message (default)
+   - Leave **Model** and **Target API key** empty.
+
+3. Click **Start Scan**. You should see:
+   - At least one **fail** in Findings (e.g. “Response contains sensitive phrase: 'system prompt'”).
+   - **Vulnerability summary** with 1+ detected (e.g. System Prompt Extraction).
+   - **Lower Global Safety Score** (e.g. 80 or 60).
+   - **Recommended Fixes** with Gradient-generated suggestions (if `GRADIENT_MODEL_ACCESS_KEY` is set).
+
+Use this for the “here’s what a vulnerable API looks like” part of your video; then switch to the real Gradient URL to show a healthy 100/100.
+
+---
+
 ## Security note
 
 The **Target API key** is sent in the request body to your backend and then used only for the outbound requests to the target URL. It is not stored. For production you’d use a dedicated “target credentials” store or per-target secrets; for the demo, pasting the key in the optional field is acceptable.
