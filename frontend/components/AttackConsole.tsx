@@ -7,7 +7,9 @@ export default function AttackConsole({ logs }: { logs: string[] }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (bottomRef.current?.scrollIntoView && typeof bottomRef.current.scrollIntoView === "function") {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, [logs]);
 
   return (

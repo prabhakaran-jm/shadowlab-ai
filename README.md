@@ -104,6 +104,22 @@ npm run dev
 
 Dashboard: `http://localhost:3000`. For production, set `NEXT_PUBLIC_API_URL` to your backend URL.
 
+### Tests
+
+**Backend (pytest):**
+```bash
+cd backend
+pip install -r requirements.txt   # includes pytest, pytest-asyncio
+pytest tests/ -v
+```
+
+**Frontend (Jest + React Testing Library):**
+```bash
+cd frontend
+npm install
+npm run test
+```
+
 ---
 
 ## How we used DigitalOcean Gradient™ AI
