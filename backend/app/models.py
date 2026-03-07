@@ -37,6 +37,7 @@ class AttackResult(BaseModel):
     verdict: str
     severity: str
     reason: str
+    suggested_fix: str | None = None
 
 
 class ScanResult(BaseModel):

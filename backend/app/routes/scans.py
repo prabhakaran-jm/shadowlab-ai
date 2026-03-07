@@ -35,17 +35,25 @@ async def _run_scan(target_url: str) -> ScanResult:
         if len(response_text) > EXCERPT_LEN:
             response_excerpt += "..."
 
-        evaluation = evaluate_response(prompt, response_text)
+        evaluation = evaluate_response(prompt, response_text, attack_type)
         verdict = evaluation["verdict"]
         severity = evaluation["severity"]
         reason = evaluation["reason"]
+        suggested_fix = evaluation.get("suggested_fix")
 
-        logger.info(
-            "attack=%s response_excerpt=%s verdict=%s",
-            attack_type,
-            response_excerpt[:80] + ("..." if len(response_excerpt) > 80 else ""),
-            verdict,
-        )
+        if verdict == "fail" and suggested_fix:
+            logger.info(
+                "attack=%s verdict=fail fix=%s",
+                attack_type,
+                suggested_fix[:80] + ("..." if len(suggested_fix) > 80 else ""),
+            )
+        else:
+            logger.info(
+                "attack=%s response_excerpt=%s verdict=%s",
+                attack_type,
+                response_excerpt[:80] + ("..." if len(response_excerpt) > 80 else ""),
+                verdict,
+            )
 
         if verdict == "fail":
             failed += 1
@@ -58,6 +66,7 @@ async def _run_scan(target_url: str) -> ScanResult:
                 verdict=verdict,
                 severity=severity,
                 reason=reason,
+                suggested_fix=suggested_fix,
             )
         )
 
