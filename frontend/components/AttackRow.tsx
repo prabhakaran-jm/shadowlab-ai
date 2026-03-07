@@ -7,6 +7,7 @@ export interface AttackResultType {
   verdict: string;
   severity: string;
   reason: string;
+  suggested_fix?: string | null;
 }
 
 const PROMPT_TRUNCATE = 80;

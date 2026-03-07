@@ -5,54 +5,126 @@ import AttackRow, { type AttackResultType } from "./AttackRow";
 export interface ScanResultType {
   total_tests: number;
   failed_tests: number;
+  safety_score: number;
   results: AttackResultType[];
 }
 
+const ATTACK_LABELS: Record<string, string> = {
+  prompt_injection: "Prompt Injection",
+  system_prompt_extraction: "System Prompt Extraction",
+  policy_bypass: "Policy Bypass",
+};
+
+function getScoreColor(score: number): string {
+  if (score >= 90) return "text-green-600";
+  if (score >= 70) return "text-yellow-600";
+  return "text-red-600";
+}
+
+function countByAttackType(results: AttackResultType[]): Record<string, number> {
+  const counts: Record<string, number> = {
+    prompt_injection: 0,
+    system_prompt_extraction: 0,
+    policy_bypass: 0,
+  };
+  for (const r of results) {
+    if (r.verdict === "fail" && r.attack_type in counts) {
+      counts[r.attack_type] += 1;
+    }
+  }
+  return counts;
+}
+
+function getUniqueFixes(results: AttackResultType[]): string[] {
+  const fixes = results
+    .map((r) => r.suggested_fix)
+    .filter((f): f is string => Boolean(f?.trim()));
+  return Array.from(new Set(fixes));
+}
+
 export default function ScanResults({ result }: { result: ScanResultType }) {
+  const counts = countByAttackType(result.results);
+  const fixes = getUniqueFixes(result.results);
+
   return (
-    <section className="rounded-lg border border-gray-200 bg-white shadow-sm p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Scan results
-      </h2>
-      <div className="flex gap-6 mb-4 text-sm">
-        <span className="text-gray-600">
-          Total tests: <strong>{result.total_tests}</strong>
-        </span>
-        <span className="text-gray-600">
-          Failed:{" "}
-          <strong className={result.failed_tests > 0 ? "text-red-600" : ""}>
-            {result.failed_tests}
-          </strong>
-        </span>
-      </div>
-      <div className="overflow-x-auto rounded border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Attack Type
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Prompt
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Verdict
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Severity
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Reason
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.results.map((row, i) => (
-              <AttackRow key={i} result={row} />
+    <div className="space-y-6 animate-fade-in">
+      {/* Safety Score Card */}
+      <section className="rounded-lg border border-gray-200 bg-white shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          ShadowLab Security Report
+        </h2>
+        <p className={`text-4xl font-bold ${getScoreColor(result.safety_score)}`}>
+          Safety Score: {result.safety_score} / 100
+        </p>
+      </section>
+
+      {/* Vulnerability Summary */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {(["prompt_injection", "system_prompt_extraction", "policy_bypass"] as const).map((key) => (
+          <div
+            key={key}
+            className="rounded-lg border border-gray-200 bg-white shadow-sm p-4"
+          >
+            <p className="text-sm font-medium text-gray-700">
+              {ATTACK_LABELS[key] ?? key}
+            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">
+              {counts[key] ?? 0} detected
+            </p>
+          </div>
+        ))}
+      </section>
+
+      {/* Results Table */}
+      <section className="rounded-lg border border-gray-200 bg-white shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Results
+        </h3>
+        <div className="overflow-x-auto rounded border border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Attack Type
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Prompt
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Verdict
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Severity
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Reason
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.results.map((row, i) => (
+                <AttackRow key={i} result={row} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Fix Recommendations */}
+      {fixes.length > 0 && (
+        <section className="rounded-lg border border-gray-200 bg-white shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            Recommended Fixes
+          </h3>
+          <ul className="list-disc list-inside space-y-2 text-gray-700">
+            {fixes.map((fix, i) => (
+              <li key={i} className="text-sm">
+                {fix}
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+          </ul>
+        </section>
+      )}
+    </div>
   );
 }
