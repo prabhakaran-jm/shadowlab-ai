@@ -40,6 +40,7 @@ ShadowLab is an adversarial testing platform that:
 | **Target runner** | POST with `message` or OpenAI-style `messages` body; returns response text for judging |
 | **Response judge** | Heuristic rules + optional Gradient AI analysis for reason and suggested_fix |
 | **Safety scoring** | 0–100; only failed tests reduce the score (passing tests do not deduct) |
+| **Persistence** | SQLite-backed storage for targets and recent reports (survives process restarts). |
 | **Deployment** | DigitalOcean App Platform (optional). Storage: DigitalOcean Spaces (optional) |
 
 ---
@@ -52,6 +53,7 @@ ShadowLab is an adversarial testing platform that:
 - **Safety score reporting** – 0–100 score derived from severity of findings
 - **Security report dashboard** – summary, vulnerability counts, results table, recommended fixes
 - **Live attack console** – progress indicators while a scan runs (streaming planned)
+- **Persistent data** – targets and recent reports are stored in SQLite (not in-memory only)
 
 ---
 

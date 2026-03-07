@@ -2,18 +2,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-import httpx
-
-from app.main import app
-
-
-@pytest.fixture
-async def client():
-    """ASGI client for route tests (avoids TestClient hang on this runtime)."""
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
-
 
 @pytest.mark.asyncio
 async def test_health(client):

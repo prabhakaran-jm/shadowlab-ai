@@ -152,4 +152,7 @@ devpost.md
 !.env.example
 
 __pycache__/
+*.db
+*.db-shm
+*.db-wal
 nul 

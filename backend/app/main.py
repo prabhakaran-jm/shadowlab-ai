@@ -22,6 +22,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import reports, scans, targets
+from app.services.storage import init_db
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,6 +48,12 @@ app.add_middleware(
 app.include_router(targets.router)
 app.include_router(scans.router)
 app.include_router(reports.router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize persistent storage tables."""
+    init_db()
 
 
 @app.get("/health")

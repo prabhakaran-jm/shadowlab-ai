@@ -160,6 +160,7 @@ describe("ScanForm", () => {
           body: JSON.stringify({
             target_url: "https://api.example.com/chat",
             target_description: "Example API",
+            target_body_format: "message",
           }),
         })
       );
