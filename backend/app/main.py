@@ -9,6 +9,7 @@ In the final system, this app will:
 """
 
 import logging
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -33,9 +34,11 @@ app = FastAPI(
     version="0.1.0",
 )
 
+_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").strip()
+allow_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

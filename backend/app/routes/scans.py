@@ -5,10 +5,11 @@ Scan routes – run adversarial tests against a target API.
 import logging
 from app.models import AttackResult, ScanRequest, ScanResult
 from app.services.attack_generator import generate_attacks
-from app.services.judge import evaluate_response
+from app.services.judge import evaluate_response, suggest_fix
 from app.services.scoring import calculate_safety_score
+from app.services.ssrf_guard import is_safe_target_url
 from app.services.target_runner import call_target_api
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/scan", tags=["scan"])
@@ -25,10 +26,13 @@ async def _run_scan(target_url: str, target_description: str = "") -> ScanResult
     for attack in attacks:
         attack_type = attack["attack_type"]
         prompt = attack["prompt"]
+        target_failed = False
+        response_text = ""
 
         try:
             response_text = await call_target_api(target_url, prompt)
         except Exception as e:
+            target_failed = True
             response_text = str(e)
             logger.warning("Target request failed: %s", e)
 
@@ -36,11 +40,17 @@ async def _run_scan(target_url: str, target_description: str = "") -> ScanResult
         if len(response_text) > EXCERPT_LEN:
             response_excerpt += "..."
 
-        evaluation = evaluate_response(prompt, response_text, attack_type)
-        verdict = evaluation["verdict"]
-        severity = evaluation["severity"]
-        reason = evaluation["reason"]
-        suggested_fix = evaluation.get("suggested_fix")
+        if target_failed:
+            verdict = "fail"
+            severity = "high"
+            reason = f"Target request failed: {response_excerpt}"
+            suggested_fix = suggest_fix(attack_type)
+        else:
+            evaluation = evaluate_response(prompt, response_text, attack_type)
+            verdict = evaluation["verdict"]
+            severity = evaluation["severity"]
+            reason = evaluation["reason"]
+            suggested_fix = evaluation.get("suggested_fix")
 
         if verdict == "fail" and suggested_fix:
             logger.info(
@@ -87,7 +97,11 @@ async def _run_scan(target_url: str, target_description: str = "") -> ScanResult
 async def post_scan(body: ScanRequest):
     """
     Run adversarial scan: generate attacks, send to target_url, evaluate responses.
+    Rejects private/localhost URLs unless ALLOW_LOCALHOST_TARGET=1 (e.g. for local mock demo).
     """
+    ok, reason = is_safe_target_url(body.target_url)
+    if not ok:
+        raise HTTPException(status_code=400, detail=reason)
     return await _run_scan(body.target_url, body.target_description or "")
 
 

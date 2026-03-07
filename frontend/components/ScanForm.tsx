@@ -4,7 +4,9 @@ import React, { useState, FormEvent } from "react";
 import { Zap } from "lucide-react";
 import type { ScanResultType } from "./ScanResults";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
+  "http://localhost:8000";
 
 export default function ScanForm({
   onResult,
