@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   description: "Chaos Engineering for AI APIs",
 };
 
+import "./globals.css";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -12,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
