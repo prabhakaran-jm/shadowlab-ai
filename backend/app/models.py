@@ -45,4 +45,5 @@ class ScanResult(BaseModel):
 
     total_tests: int
     failed_tests: int
+    safety_score: int
     results: list[AttackResult]

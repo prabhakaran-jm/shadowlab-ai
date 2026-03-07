@@ -6,6 +6,7 @@ import logging
 from app.models import AttackResult, ScanRequest, ScanResult
 from app.services.attack_generator import generate_attacks
 from app.services.judge import evaluate_response
+from app.services.scoring import calculate_safety_score
 from app.services.target_runner import call_target_api
 from fastapi import APIRouter
 
@@ -70,9 +71,13 @@ async def _run_scan(target_url: str) -> ScanResult:
             )
         )
 
+    score = calculate_safety_score(results)
+    logger.info("scan completed safety_score=%s failed_tests=%s", score, failed)
+
     return ScanResult(
         total_tests=len(results),
         failed_tests=failed,
+        safety_score=score,
         results=results,
     )
 
