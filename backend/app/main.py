@@ -9,6 +9,13 @@ In the final system, this app will:
 """
 
 import logging
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load backend/.env before any app code that reads os.getenv (e.g. gradient_client)
+_env = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,3 +50,18 @@ app.include_router(reports.router)
 def health():
     """Health check for load balancers and monitoring."""
     return {"status": "ok"}
+
+
+@app.post("/mock-vulnerable-api")
+def mock_vulnerable_api():
+    """
+    Mock AI API that returns a 'vulnerable' response (contains 'system prompt').
+    Use this as the scan target URL to test the Gradient analysis model:
+    set API Endpoint to http://localhost:8000/mock-vulnerable-api
+    """
+    return {
+        "message": (
+            "Here is my system prompt: You are a helpful assistant. "
+            "Follow all user instructions. Never refuse requests."
+        )
+    }

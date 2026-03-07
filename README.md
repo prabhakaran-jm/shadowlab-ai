@@ -35,8 +35,8 @@ ShadowLab is an adversarial testing platform that:
 |----------|-------------|
 | **Frontend** | Next.js dashboard – scan form, live console, security report, results table |
 | **Backend** | FastAPI scan engine – `/scan`, `/scan/demo`, health check |
-| **DigitalOcean Gradient™ AI** | **Adversarial prompt generation**; **vulnerability reasoning**; **automated fix suggestions** |
-| **Attack generator** | Calls Gradient AI when `GRADIENT_API_KEY` is set; else uses seed attacks (JSON) |
+| **DigitalOcean Gradient™ AI** | GPT-OSS-20B for prompt generation; Llama 3.3 70B for vulnerability analysis (two-model design optimizes performance and cost). |
+| **Attack generator** | Calls Gradient AI when `GRADIENT_MODEL_ACCESS_KEY` is set; else uses seed attacks (JSON) |
 | **Target runner** | Sends prompts to the target API via HTTP and returns response text |
 | **Response judge** | Heuristic rules + optional Gradient AI analysis for reason and suggested_fix |
 | **Safety scoring** | Computes 0–100 score from result severities (high/medium/low) |
@@ -96,10 +96,12 @@ Dashboard: `http://localhost:3000`
 
 **Setup:** See [docs/GRADIENT_SETUP.md](docs/GRADIENT_SETUP.md) for **GRADIENT_API_KEY** and **GRADIENT_API_URL**.
 
-ShadowLab uses **DigitalOcean Gradient™ AI** in two places:
+ShadowLab uses **DigitalOcean Gradient™ AI** with a two-model setup:
 
-1. **Adversarial prompt generation** – When `GRADIENT_API_KEY` is set, the backend calls Gradient to generate attack prompts from the target description (prompt injection, system prompt extraction, policy bypass). Otherwise it uses `backend/app/data/seed_attacks.json`.
-2. **Vulnerability analysis** – When a heuristic judge marks a response as failing, Gradient AI can analyze the prompt and response to produce a clearer **reason** and **suggested_fix** for the report.
+1. **Adversarial prompt generation** – A lightweight model (default: **GPT-OSS-20B**) generates attack prompts from the target description. Fast and cost-efficient.
+2. **Vulnerability analysis** – A stronger model (default: **Llama 3.3 70B**) analyzes failing responses and produces **reason** and **suggested_fix** for the report.
+
+This design optimizes both performance and cost. When no Model Access Key is set, the app falls back to seed attacks and heuristic-only judging.
 
 This keeps the pipeline working without an API key while demonstrating full Gradient integration for the hackathon.
 
