@@ -75,6 +75,22 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/gradient/status")
+async def gradient_status():
+    """Check whether Gradient AI is configured and return model info."""
+    from app.services.gradient_client import (
+        GRADIENT_API_KEY,
+        GRADIENT_MODEL_GENERATION,
+        GRADIENT_MODEL_ANALYSIS,
+    )
+    available = bool(GRADIENT_API_KEY and GRADIENT_API_KEY.strip())
+    return {
+        "available": available,
+        "generation_model": GRADIENT_MODEL_GENERATION if available else None,
+        "analysis_model": GRADIENT_MODEL_ANALYSIS if available else None,
+    }
+
+
 @app.post("/mock-vulnerable-api")
 async def mock_vulnerable_api():
     """

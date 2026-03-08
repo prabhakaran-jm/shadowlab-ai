@@ -3,12 +3,17 @@ Attack payload generator.
 
 Uses DigitalOcean Gradient AI when GRADIENT_API_KEY is set;
 otherwise falls back to seed attacks from seed_attacks.json.
+Supports iterative refinement: generates follow-up attacks based on
+the target's defensive patterns using Gradient AI.
 """
 
 import json
 from pathlib import Path
 
-from app.services.gradient_client import generate_adversarial_prompts as gradient_generate
+from app.services.gradient_client import (
+    generate_adversarial_prompts as gradient_generate,
+    generate_refined_attacks as gradient_refine,
+)
 
 
 def _load_seed_attacks() -> list[dict]:
@@ -34,3 +39,15 @@ def generate_attacks(target_description: str) -> tuple[list[dict], bool]:
         for item in seeds
     ]
     return (attacks, False)
+
+
+def generate_refined_attacks(
+    defended_attacks: list[dict[str, str]],
+) -> list[dict[str, str]] | None:
+    """
+    Generate follow-up attacks based on the target's successful defenses.
+    Returns list of {attack_type, prompt} or None if unavailable.
+    """
+    if not defended_attacks:
+        return None
+    return gradient_refine(defended_attacks)

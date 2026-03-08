@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import ScanForm from "@/components/ScanForm";
 import {
   FindingsSection,
@@ -12,32 +12,12 @@ import SafetyScoreGauge from "@/components/SafetyScoreGauge";
 import RemediationsBlock from "@/components/RemediationsBlock";
 import type { ScanResultType } from "@/components/ScanResults";
 
-const SIMULATED_ATTACKS = [
-  "Running attack: prompt_injection",
-  "Running attack: system_prompt_extraction",
-  "Running attack: policy_bypass",
-];
-
 export default function Home() {
   const [result, setResult] = useState<ScanResultType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
-  const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  useEffect(() => {
-    if (!loading) return;
-    const delays = [800, 1800, 2800];
-    timeoutRefs.current = delays.map((delay, i) =>
-      setTimeout(() => {
-        setLogs((prev) => [...prev, SIMULATED_ATTACKS[i]]);
-      }, delay)
-    );
-    return () => {
-      timeoutRefs.current.forEach(clearTimeout);
-      timeoutRefs.current = [];
-    };
-  }, [loading]);
+  const scanState = loading ? "loading" : result ? "done" : "idle";
 
   return (
     <div className="min-h-screen bg-[#0f0f12] text-zinc-100">
@@ -50,7 +30,7 @@ export default function Home() {
             Chaos engineering for AI APIs
           </p>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-xs font-medium text-indigo-400/95 shadow-sm">
-            Powered by DigitalOcean Gradient™ AI
+            Powered by DigitalOcean Gradient&trade; AI
           </div>
           <p className="text-xs text-zinc-500 max-w-xl mx-auto">
             Automatically uncover adversarial failures before they reach production.
@@ -63,7 +43,6 @@ export default function Home() {
               onResult={setResult}
               onLoading={setLoading}
               onError={setError}
-              setLogs={setLogs}
             />
             {result && !loading && (
               <FindingsSection results={result.results} />
@@ -75,10 +54,11 @@ export default function Home() {
                 <SafetyScoreGauge
                   score={result.safety_score}
                   gradientUsed={result.gradient_used}
+                  rounds={result.rounds}
                 />
                 {!result.gradient_used && (
                   <p className="text-xs text-amber-500/90 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
-                    This run used seed attacks. Set <code className="text-amber-400/90">GRADIENT_MODEL_ACCESS_KEY</code> on the backend for Gradient AI–generated attacks and analysis.
+                    This run used seed attacks. Set <code className="text-amber-400/90">GRADIENT_MODEL_ACCESS_KEY</code> on the backend for Gradient AI-generated attacks and analysis.
                   </p>
                 )}
                 <VulnerabilitySummarySection result={result} />
@@ -92,14 +72,14 @@ export default function Home() {
           </div>
         </div>
 
-        {loading && (
-          <>
-            <AttackConsole logs={logs} />
-            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md px-5 py-4 text-center text-zinc-400 text-sm transition-all duration-300 mt-6">
-              Running adversarial tests...
-            </div>
-          </>
-        )}
+        <div className="mt-6">
+          <AttackConsole
+            scanState={scanState}
+            totalTests={result?.total_tests}
+            failedTests={result?.failed_tests}
+            rounds={result?.rounds}
+          />
+        </div>
 
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-400 text-sm mt-6">

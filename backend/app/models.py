@@ -53,3 +53,4 @@ class ScanResult(BaseModel):
     safety_score: int
     results: list[AttackResult]
     gradient_used: bool = False
+    rounds: int = 1

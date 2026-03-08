@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, FormEvent } from "react";
+import React, { useState, useEffect, FormEvent } from "react";
 import { Zap } from "lucide-react";
 import type { ScanResultType } from "./ScanResults";
 
@@ -8,28 +8,38 @@ const API_BASE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
   "http://localhost:8000";
 
+interface GradientStatus {
+  available: boolean;
+  generation_model: string | null;
+  analysis_model: string | null;
+}
+
 export default function ScanForm({
   onResult,
   onLoading,
   onError,
-  setLogs,
 }: {
   onResult: (result: ScanResultType) => void;
   onLoading: (loading: boolean) => void;
   onError: (message: string | null) => void;
-  setLogs?: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
   const [endpoint, setEndpoint] = useState("");
   const [description, setDescription] = useState("");
   const [bodyFormat, setBodyFormat] = useState<"message" | "messages">("message");
   const [targetModel, setTargetModel] = useState("");
   const [targetApiKey, setTargetApiKey] = useState("");
+  const [gradientStatus, setGradientStatus] = useState<GradientStatus | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/gradient/status`)
+      .then((res) => res.json())
+      .then((data: GradientStatus) => setGradientStatus(data))
+      .catch(() => setGradientStatus(null));
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     onError(null);
-    setLogs?.(["Starting ShadowLab scan..."]);
-    setLogs?.((prev) => [...prev, "Launching adversarial attacks..."]);
     onLoading(true);
 
     const payload: Record<string, string | undefined> = {
@@ -53,11 +63,6 @@ export default function ScanForm({
 
       const data: ScanResultType = await res.json();
       onResult(data);
-      setLogs?.((prev) => [
-        ...prev,
-        "Scan completed.",
-        "Safety score calculated.",
-      ]);
     } catch {
       onError("Scan failed. Check API endpoint.");
     } finally {
@@ -76,6 +81,20 @@ export default function ScanForm({
           New scan
         </h2>
       </div>
+      {gradientStatus !== null && (
+        <div className={`flex items-center gap-2 mb-3 text-xs font-medium rounded-md px-2.5 py-1.5 border ${
+          gradientStatus.available
+            ? "text-emerald-400/90 bg-emerald-500/10 border-emerald-500/20"
+            : "text-amber-400/90 bg-amber-500/10 border-amber-500/20"
+        }`}>
+          <span className={`h-2 w-2 rounded-full ${
+            gradientStatus.available ? "bg-emerald-500" : "bg-amber-500"
+          }`} />
+          {gradientStatus.available
+            ? `Gradient AI: Connected (${gradientStatus.generation_model} + ${gradientStatus.analysis_model})`
+            : "Gradient AI: Not configured \u2014 using seed attacks only"}
+        </div>
+      )}
       <div className="space-y-3">
         <div>
           <label

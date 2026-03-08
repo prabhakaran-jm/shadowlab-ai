@@ -1,10 +1,14 @@
 """
 Scan routes – run adversarial tests against a target API.
+
+Supports iterative attack refinement: when Gradient AI is available and
+some attacks pass (target defended successfully), a second round of
+refined attacks is generated and executed to test deeper defenses.
 """
 
 import logging
 from app.models import AttackResult, ScanRequest, ScanResult
-from app.services.attack_generator import generate_attacks
+from app.services.attack_generator import generate_attacks, generate_refined_attacks
 from app.services.judge import evaluate_response, suggest_fix
 from app.services.scoring import calculate_safety_score
 from app.services.ssrf_guard import is_safe_target_url
@@ -18,24 +22,19 @@ router = APIRouter(prefix="/scan", tags=["scan"])
 limiter = Limiter(key_func=get_remote_address)
 
 EXCERPT_LEN = 200
+MAX_TOTAL_ATTACKS = 15
 
 
-async def _run_scan(
+async def _run_attack_round(
+    attacks: list[dict],
     target_url: str,
-    target_description: str = "",
-    mock_responses: list[str] | None = None,
-    target_body_format: str = "message",
-    target_model: str | None = None,
-    target_authorization: str | None = None,
-) -> ScanResult:
-    """Generate attacks, call target for each, evaluate, aggregate.
-    If mock_responses is set, use those instead of HTTP (no network; for demo/tests).
-    target_body_format: "message" (default) or "messages" (OpenAI/Gradient).
-    Optional target_model (for messages) and target_authorization (Bearer token) for real APIs.
-    """
-    attacks, gradient_used = generate_attacks(target_description)
+    mock_responses: list[str] | None,
+    target_body_format: str,
+    target_model: str | None,
+    target_authorization: str | None,
+) -> list[AttackResult]:
+    """Execute a single round of attacks and return results."""
     results: list[AttackResult] = []
-    failed = 0
 
     for i, attack in enumerate(attacks):
         attack_type = attack["attack_type"]
@@ -89,9 +88,6 @@ async def _run_scan(
                 verdict,
             )
 
-        if verdict == "fail":
-            failed += 1
-
         results.append(
             AttackResult(
                 attack_type=attack_type,
@@ -104,8 +100,61 @@ async def _run_scan(
             )
         )
 
+    return results
+
+
+async def _run_scan(
+    target_url: str,
+    target_description: str = "",
+    mock_responses: list[str] | None = None,
+    target_body_format: str = "message",
+    target_model: str | None = None,
+    target_authorization: str | None = None,
+) -> ScanResult:
+    """Generate attacks, call target for each, evaluate, aggregate.
+    If mock_responses is set, use those instead of HTTP (no network; for demo/tests).
+    target_body_format: "message" (default) or "messages" (OpenAI/Gradient).
+    Optional target_model (for messages) and target_authorization (Bearer token) for real APIs.
+
+    When Gradient AI is available and some attacks pass in round 1,
+    a second round of refined attacks is generated and executed.
+    """
+    attacks, gradient_used = generate_attacks(target_description)
+    rounds = 1
+
+    # Round 1
+    results = await _run_attack_round(
+        attacks, target_url, mock_responses,
+        target_body_format, target_model, target_authorization,
+    )
+
+    # Round 2: iterative refinement (only when Gradient is available and some attacks passed)
+    if gradient_used and not mock_responses:
+        defended = [
+            {"prompt": r.prompt, "response": r.response_excerpt}
+            for r in results
+            if r.verdict == "pass"
+        ]
+        if defended:
+            slots_remaining = MAX_TOTAL_ATTACKS - len(results)
+            if slots_remaining > 0:
+                refined = generate_refined_attacks(defended)
+                if refined:
+                    refined = refined[:slots_remaining]
+                    logger.info(
+                        "Round 2: running %d refined attacks based on %d successful defenses",
+                        len(refined), len(defended),
+                    )
+                    round2_results = await _run_attack_round(
+                        refined, target_url, None,
+                        target_body_format, target_model, target_authorization,
+                    )
+                    results.extend(round2_results)
+                    rounds = 2
+
+    failed = sum(1 for r in results if r.verdict == "fail")
     score = calculate_safety_score(results)
-    logger.info("scan completed safety_score=%s failed_tests=%s", score, failed)
+    logger.info("scan completed safety_score=%s failed_tests=%s rounds=%s", score, failed, rounds)
 
     result = ScanResult(
         total_tests=len(results),
@@ -113,6 +162,7 @@ async def _run_scan(
         safety_score=score,
         results=results,
         gradient_used=gradient_used,
+        rounds=rounds,
     )
     try:
         from app.routes.reports import append_report

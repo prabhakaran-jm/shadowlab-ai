@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ShieldAlert, ScanSearch, Lock, AlertTriangle, Terminal } from "lucide-react";
 import AttackRow, { type AttackResultType } from "./AttackRow";
 import MetricCard from "./MetricCard";
@@ -12,6 +13,7 @@ export interface ScanResultType {
   safety_score: number;
   results: AttackResultType[];
   gradient_used?: boolean;
+  rounds?: number;
 }
 
 const ATTACK_KEYS = [
@@ -30,6 +32,10 @@ const METRIC_CONFIG: {
   { key: "system_prompt_extraction", label: "System Prompt Extraction", icon: ScanSearch, accent: "amber" },
   { key: "policy_bypass", label: "Policy Bypass", icon: Lock, accent: "purple" },
 ];
+
+const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+type SeverityFilter = "all" | "high" | "medium" | "low";
 
 export function countByAttackType(results: AttackResultType[]): Record<string, number> {
   const counts: Record<string, number> = {
@@ -78,18 +84,52 @@ export function VulnerabilitySummarySection({ result }: { result: ScanResultType
 }
 
 export function FindingsSection({ results }: { results: AttackResultType[] }) {
+  const [filter, setFilter] = useState<SeverityFilter>("all");
+
+  const filtered = results
+    .filter((r) => filter === "all" || r.severity === filter)
+    .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 3) - (SEVERITY_ORDER[b.severity] ?? 3));
+
+  const filterButtons: { label: string; value: SeverityFilter; color: string }[] = [
+    { label: "All", value: "all", color: "text-zinc-400 border-zinc-700 bg-zinc-800/50" },
+    { label: "High", value: "high", color: "text-red-400 border-red-500/30 bg-red-500/10" },
+    { label: "Medium", value: "medium", color: "text-amber-400 border-amber-500/30 bg-amber-500/10" },
+    { label: "Low", value: "low", color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" },
+  ];
+
   return (
     <section>
-      <div className="flex items-center gap-2.5 mb-2">
-        <Terminal className="w-4 h-4 text-zinc-500" />
-        <h3 className="text-xs font-medium uppercase tracking-widest text-zinc-500">
-          Findings
-        </h3>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2.5">
+          <Terminal className="w-4 h-4 text-zinc-500" />
+          <h3 className="text-xs font-medium uppercase tracking-widest text-zinc-500">
+            Findings
+          </h3>
+        </div>
+        <div className="flex gap-1.5">
+          {filterButtons.map((btn) => (
+            <button
+              key={btn.value}
+              onClick={() => setFilter(btn.value)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-all ${
+                filter === btn.value
+                  ? btn.color
+                  : "text-zinc-600 border-zinc-800 bg-transparent hover:border-zinc-700"
+              }`}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="space-y-4">
-        {results.map((row, i) => (
-          <AttackRow key={i} result={row} />
-        ))}
+        {filtered.length === 0 ? (
+          <p className="text-zinc-600 text-sm py-4 text-center">
+            No findings match the selected filter.
+          </p>
+        ) : (
+          filtered.map((row, i) => <AttackRow key={i} result={row} />)
+        )}
       </div>
     </section>
   );
@@ -111,6 +151,7 @@ export default function ScanResults({
         <SafetyScoreGauge
           score={result.safety_score}
           gradientUsed={result.gradient_used}
+          rounds={result.rounds}
         />
       )}
 
