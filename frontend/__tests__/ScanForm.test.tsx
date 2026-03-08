@@ -8,13 +8,33 @@ const mockScanResult = {
   safety_score: 100,
   results: [],
   gradient_used: false,
+  rounds: 1,
+};
+
+const mockGradientStatus = {
+  available: false,
+  generation_model: null,
+  analysis_model: null,
 };
 
 describe("ScanForm", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    global.fetch = jest.fn();
+    // Mock fetch: first call is gradient/status (on mount), subsequent calls are /scan
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/gradient/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockGradientStatus,
+        });
+      }
+      // Default: return scan result (overridden in specific tests)
+      return Promise.resolve({
+        ok: true,
+        json: async () => mockScanResult,
+      });
+    });
   });
 
   afterAll(() => {
@@ -45,11 +65,50 @@ describe("ScanForm", () => {
     expect(screen.getByText("New scan")).toBeInTheDocument();
   });
 
-  it("calls onLoading with true then false when submit starts and completes", async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockScanResult,
+  it("shows Gradient status badge after fetching status", async () => {
+    render(
+      <ScanForm
+        onResult={jest.fn()}
+        onLoading={jest.fn()}
+        onError={jest.fn()}
+      />
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Gradient AI: Not configured/i)
+      ).toBeInTheDocument();
     });
+  });
+
+  it("shows connected badge when Gradient is available", async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/gradient/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            available: true,
+            generation_model: "openai-gpt-oss-20b",
+            analysis_model: "llama3.3-70b-instruct",
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => mockScanResult });
+    });
+    render(
+      <ScanForm
+        onResult={jest.fn()}
+        onLoading={jest.fn()}
+        onError={jest.fn()}
+      />
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Gradient AI: Connected/i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("calls onLoading with true then false when submit starts and completes", async () => {
     const onLoading = jest.fn();
     render(
       <ScanForm
@@ -74,10 +133,6 @@ describe("ScanForm", () => {
   });
 
   it("calls onResult with scan data on successful response", async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockScanResult,
-    });
     const onResult = jest.fn();
     render(
       <ScanForm
@@ -101,7 +156,15 @@ describe("ScanForm", () => {
   });
 
   it("calls onError when fetch fails", async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false });
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/gradient/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockGradientStatus,
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
     const onError = jest.fn();
     render(
       <ScanForm
@@ -125,10 +188,6 @@ describe("ScanForm", () => {
   });
 
   it("POSTs to /scan with target_url and target_description", async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockScanResult,
-    });
     render(
       <ScanForm
         onResult={jest.fn()}
